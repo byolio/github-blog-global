@@ -1,7 +1,19 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PROVIDER_BASE_URLS = void 0;
+exports.normalizeSiteUrl = normalizeSiteUrl;
 exports.getBaseURL = getBaseURL;
+function normalizeSiteUrl(siteUrl) {
+    if (!siteUrl)
+        return undefined;
+    let url = siteUrl.trim();
+    if (!url)
+        return undefined;
+    if (!/^https?:\/\//i.test(url)) {
+        url = `https://${url}`;
+    }
+    return url.replace(/\/+$/, '');
+}
 exports.PROVIDER_BASE_URLS = {
     openrouter: 'https://openrouter.ai/api/v1',
     siliconflow: 'https://api.siliconflow.cn/v1'

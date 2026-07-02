@@ -50,6 +50,7 @@ function loadConfigFile(workspacePath: string): Partial<BlogGlobalConfig> {
       if (parsed.provider) config.aiProvider = parsed.provider;
       if (parsed.model) config.aiModel = parsed.model;
       if (parsed.base_lang) config.baseLang = parsed.base_lang;
+      if (parsed.site_url) config.siteUrl = parsed.site_url;
       if (parsed.target_langs) {
         config.targetLangs = Array.isArray(parsed.target_langs)
           ? parsed.target_langs
@@ -128,6 +129,12 @@ async function runInteractive(workspacePath: string, configFromFile: Partial<Blo
     validate: (val) => val.length > 0 ? true : 'Select at least one target language'
   });
 
+  const siteUrlInput = await input({
+    message: 'Enter your blog\'s public site URL (e.g. https://www.byolio.blog), or leave empty to use relative links:',
+    default: configFromFile.siteUrl || ''
+  });
+  const siteUrl = siteUrlInput.trim() || undefined;
+
   const baseBranch = await input({
     message: 'Enter Git Base Branch for PR (e.g. main, master):',
     default: configFromFile.baseBranch || 'main',
@@ -158,7 +165,8 @@ async function runInteractive(workspacePath: string, configFromFile: Partial<Blo
     targetLangs,
     githubToken,
     createPr,
-    baseBranch
+    baseBranch,
+    siteUrl
   };
 }
 
@@ -178,6 +186,7 @@ async function main() {
     .option('--base-lang <lang>', 'Source language code')
     .option('--target-langs <langs>', 'Comma-separated target language codes')
     .option('--create-pr', 'Automatically create a Pull Request')
+    .option('--site-url <url>', 'Public site URL used to build absolute language switch links (e.g. https://www.byolio.blog)')
     .option('--base-branch <branch>', 'Base branch name for the PR (e.g. main)')
     .option('--token <token>', 'GitHub Token for PR creation');
 
@@ -205,6 +214,7 @@ async function main() {
       : configFromFile.targetLangs;
     const createPr = !!(options.createPr || configFromFile.createPr);
     const githubToken = options.token || process.env.GITHUB_TOKEN;
+    const siteUrl = options.siteUrl || configFromFile.siteUrl;
 
     if (!aiProvider) {
       console.error('Error: --provider is required in non-interactive mode.');
@@ -242,7 +252,8 @@ async function main() {
       targetLangs,
       githubToken,
       createPr,
-      baseBranch: options.baseBranch || configFromFile.baseBranch || 'main'
+      baseBranch: options.baseBranch || configFromFile.baseBranch || 'main',
+      siteUrl
     };
   } else {
     // Interactive mode

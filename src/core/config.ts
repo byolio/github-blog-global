@@ -8,6 +8,20 @@ export interface BlogGlobalConfig {
   githubToken?: string;
   createPr?: boolean;
   baseBranch?: string;
+  // Public site root (e.g. https://www.byolio.blog). When set, language
+  // switch links are generated as absolute URLs against this domain instead
+  // of site-relative paths.
+  siteUrl?: string;
+}
+
+export function normalizeSiteUrl(siteUrl?: string): string | undefined {
+  if (!siteUrl) return undefined;
+  let url = siteUrl.trim();
+  if (!url) return undefined;
+  if (!/^https?:\/\//i.test(url)) {
+    url = `https://${url}`;
+  }
+  return url.replace(/\/+$/, '');
 }
 
 export const PROVIDER_BASE_URLS: Record<string, string> = {

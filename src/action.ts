@@ -13,6 +13,7 @@ async function run() {
     const baseLang = core.getInput('base_lang', { required: true });
     const targetLangsInput = core.getInput('target_langs', { required: true });
     const githubToken = core.getInput('github_token') || undefined;
+    const siteUrl = core.getInput('site_url') || undefined;
 
     const targetLangs = targetLangsInput
       .split(',')
@@ -38,7 +39,8 @@ async function run() {
       baseLang,
       targetLangs,
       githubToken,
-      createPr: !!githubToken
+      createPr: !!githubToken,
+      siteUrl
     };
 
     const workspacePath = process.env.GITHUB_WORKSPACE || process.cwd();

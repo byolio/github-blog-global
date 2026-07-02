@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import matter from 'gray-matter';
-import { BlogGlobalConfig } from './config';
+import { BlogGlobalConfig, normalizeSiteUrl } from './config';
 import { Detector } from './detector';
 import { IgnoreParser } from './ignore';
 import { StateManager, StateSchema } from './state';
@@ -30,30 +30,41 @@ export class Orchestrator {
   }
 
   private resolvePageUrl(filePath: string, lang: string, framework: string): string {
+    let relativePath: string;
+
     const fullPath = path.join(this.workspacePath, filePath);
+    let permalink: string | undefined;
     if (fs.existsSync(fullPath)) {
       try {
         const content = readTextFile(fullPath);
         const parsed = matter(content);
         if (typeof parsed.data.permalink === 'string') {
-          return parsed.data.permalink;
+          permalink = parsed.data.permalink;
         }
       } catch {
         // Ignore
       }
     }
 
-    // Fallback URL generation
-    let cleanPath = filePath.replace(/\\/g, '/');
-    // Strip posts directory prefixes
-    cleanPath = cleanPath.replace(/^(_posts|source\/_posts)\//, '');
-    cleanPath = cleanPath.replace(/\.(md|markdown)$/, '');
-
-    if (lang === this.config.baseLang) {
-      return `/${cleanPath}/`;
+    if (permalink) {
+      relativePath = permalink;
     } else {
-      return `/${lang}/${cleanPath}/`;
+      // Fallback URL generation
+      let cleanPath = filePath.replace(/\\/g, '/');
+      // Strip posts directory prefixes
+      cleanPath = cleanPath.replace(/^(_posts|source\/_posts)\//, '');
+      cleanPath = cleanPath.replace(/\.(md|markdown)$/, '');
+
+      relativePath = lang === this.config.baseLang
+        ? `/${cleanPath}/`
+        : `/${lang}/${cleanPath}/`;
     }
+
+    const siteUrl = normalizeSiteUrl(this.config.siteUrl);
+    if (!siteUrl) {
+      return relativePath;
+    }
+    return `${siteUrl}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`;
   }
 
   async run(): Promise<OrchestratorResult> {

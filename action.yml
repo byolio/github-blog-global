@@ -19,6 +19,9 @@ inputs:
   target_langs:
     description: 'Comma-separated target language codes'
     required: true
+  site_url:
+    description: 'Public site URL used to build absolute language switch links (e.g. https://www.byolio.blog). Leave empty to use site-relative links.'
+    required: false
   github_token:
     description: 'GitHub Token for PR creation (GITHUB_TOKEN or GitHub App token)'
     required: false

@@ -40,6 +40,7 @@ exports.Orchestrator = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const gray_matter_1 = __importDefault(require("gray-matter"));
+const config_1 = require("./config");
 const detector_1 = require("./detector");
 const ignore_1 = require("./ignore");
 const state_1 = require("./state");
@@ -57,30 +58,39 @@ class Orchestrator {
         this.workspacePath = workspacePath;
     }
     resolvePageUrl(filePath, lang, framework) {
+        let relativePath;
         const fullPath = path.join(this.workspacePath, filePath);
+        let permalink;
         if (fs.existsSync(fullPath)) {
             try {
                 const content = (0, fs_utils_1.readTextFile)(fullPath);
                 const parsed = (0, gray_matter_1.default)(content);
                 if (typeof parsed.data.permalink === 'string') {
-                    return parsed.data.permalink;
+                    permalink = parsed.data.permalink;
                 }
             }
             catch {
                 // Ignore
             }
         }
-        // Fallback URL generation
-        let cleanPath = filePath.replace(/\\/g, '/');
-        // Strip posts directory prefixes
-        cleanPath = cleanPath.replace(/^(_posts|source\/_posts)\//, '');
-        cleanPath = cleanPath.replace(/\.(md|markdown)$/, '');
-        if (lang === this.config.baseLang) {
-            return `/${cleanPath}/`;
+        if (permalink) {
+            relativePath = permalink;
         }
         else {
-            return `/${lang}/${cleanPath}/`;
+            // Fallback URL generation
+            let cleanPath = filePath.replace(/\\/g, '/');
+            // Strip posts directory prefixes
+            cleanPath = cleanPath.replace(/^(_posts|source\/_posts)\//, '');
+            cleanPath = cleanPath.replace(/\.(md|markdown)$/, '');
+            relativePath = lang === this.config.baseLang
+                ? `/${cleanPath}/`
+                : `/${lang}/${cleanPath}/`;
         }
+        const siteUrl = (0, config_1.normalizeSiteUrl)(this.config.siteUrl);
+        if (!siteUrl) {
+            return relativePath;
+        }
+        return `${siteUrl}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`;
     }
     async run() {
         try {
