@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist/cli-bundle/
+.blog-global/
+.blog-global.yml
+.env
+*.log

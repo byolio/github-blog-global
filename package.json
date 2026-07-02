@@ -1,0 +1,30 @@
+{
+  "name": "blog-global",
+  "version": "1.0.0",
+  "description": "Auto-translate GitHub Pages blog posts via AI",
+  "main": "dist/index.js",
+  "bin": {
+    "blog-global": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "package": "ncc build src/action.ts -o dist --minify",
+    "package:cli": "node scripts/build-cli.js",
+    "prepare": "npm run package"
+  },
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
+    "@inquirer/prompts": "^5.0.7",
+    "@octokit/rest": "^20.1.1",
+    "commander": "^12.1.0",
+    "gray-matter": "^4.0.3",
+    "ignore": "^5.3.1",
+    "openai": "^4.52.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "@vercel/ncc": "^0.38.1",
+    "typescript": "^5.5.2"
+  }
+}

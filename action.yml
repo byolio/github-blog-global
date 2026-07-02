@@ -1,0 +1,28 @@
+name: 'Blog Global Translator'
+description: 'Auto-translate GitHub Pages blog posts via AI'
+inputs:
+  ai_provider:
+    description: 'openrouter | siliconflow | custom'
+    required: true
+  ai_api_key:
+    description: 'AI provider API key'
+    required: true
+  ai_model:
+    description: 'Model name (e.g. google/gemini-2.5-flash)'
+    required: true
+  ai_base_url:
+    description: 'Custom AI base URL (only when ai_provider=custom)'
+    required: false
+  base_lang:
+    description: 'Source language code'
+    required: true
+  target_langs:
+    description: 'Comma-separated target language codes'
+    required: true
+  github_token:
+    description: 'GitHub Token for PR creation (GITHUB_TOKEN or GitHub App token)'
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
