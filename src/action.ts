@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 import * as path from 'path';
 import { Orchestrator } from './core/orchestrator';
 import { BlogGlobalConfig } from './core/config';
-import { isValidLanguageCode } from './utils/languages';
+import { isValidLanguageCode, getSupportedLanguageCodesList } from './utils/languages';
 
 async function run() {
   try {
@@ -21,12 +21,12 @@ async function run() {
 
     // Validate languages
     if (!isValidLanguageCode(baseLang)) {
-      throw new Error(`Invalid base_lang: ${baseLang}. Please use a supported language code.`);
+      throw new Error(`Invalid base_lang: ${baseLang}. Supported language codes: ${getSupportedLanguageCodesList()}`);
     }
 
     for (const lang of targetLangs) {
       if (!isValidLanguageCode(lang)) {
-        throw new Error(`Invalid target_lang: ${lang}. Please use a supported language code.`);
+        throw new Error(`Invalid target_lang: ${lang}. Supported language codes: ${getSupportedLanguageCodesList()}`);
       }
     }
 

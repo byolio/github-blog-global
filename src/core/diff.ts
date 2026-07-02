@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { StateSchema } from './state';
+import { readTextFile } from '../utils/fs-utils';
 
 export interface DiffResult {
   added: string[];
@@ -18,7 +19,8 @@ export class DiffDetector {
     workspacePath: string,
     state: StateSchema,
     postsDir: string,
-    ignoreCheck: (filePath: string) => boolean
+    ignoreCheck: (filePath: string) => boolean,
+    targetLangs: string[] = []
   ): DiffResult {
     const added: string[] = [];
     const modified: string[] = [];
@@ -42,13 +44,17 @@ export class DiffDetector {
             scanDir(fullPath);
           } else if (entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.markdown'))) {
             existingFiles.add(relativePath);
-            const content = fs.readFileSync(fullPath, 'utf8');
+            const content = readTextFile(fullPath);
             const currentHash = this.getHash(content);
 
             const fileState = state.files[relativePath];
             if (!fileState) {
               added.push(relativePath);
             } else if (fileState.hash !== currentHash) {
+              modified.push(relativePath);
+            } else if (targetLangs.some(lang => !fileState.translated[lang])) {
+              // Content unchanged, but a previous run failed to translate into
+              // one or more target languages. Retry those on this run.
               modified.push(relativePath);
             }
           }

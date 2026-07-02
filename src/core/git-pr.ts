@@ -1,4 +1,6 @@
 import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Octokit } from '@octokit/rest';
 
 export interface GitPRConfig {
@@ -82,6 +84,32 @@ export class GitPRManager {
       // Ignore
     }
 
+    // Back up the current contents of files we're about to commit. If PR
+    // creation fails after the commit, checking back out to originalBranch
+    // would otherwise silently discard this work (it only exists in the
+    // temporary branch's commit). Restoring from this backup keeps the
+    // translated/modified files on disk as local (uncommitted) changes.
+    const backups = new Map<string, Buffer | null>();
+    for (const file of filesToCommit) {
+      const fullPath = path.join(this.workspacePath, file);
+      backups.set(file, fs.existsSync(fullPath) ? fs.readFileSync(fullPath) : null);
+    }
+    const restoreBackups = () => {
+      for (const [file, content] of backups.entries()) {
+        const fullPath = path.join(this.workspacePath, file);
+        try {
+          if (content === null) {
+            if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+          } else {
+            fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+            fs.writeFileSync(fullPath, content);
+          }
+        } catch {
+          // Best-effort restore; ignore individual file failures
+        }
+      }
+    };
+
     // Check if base branch exists locally or can be checked out
     try {
       this.runGit(['checkout', this.baseBranch]);
@@ -146,6 +174,8 @@ export class GitPRManager {
       } catch {
         // Ignore branch cleanup errors to bubble up the original error
       }
+      // Restore translated/modified files so the failed attempt doesn't lose work
+      restoreBackups();
       throw err;
     }
   }

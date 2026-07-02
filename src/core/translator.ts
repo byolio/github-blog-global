@@ -29,14 +29,57 @@ export class Translator {
     });
   }
 
+  private getRetryAfterMs(error: any): number | undefined {
+    const status = error?.status ?? error?.response?.status;
+    if (status !== 429) return undefined;
+    const headers = error?.headers ?? error?.response?.headers;
+    const retryAfter = headers?.get ? headers.get('retry-after') : headers?.['retry-after'];
+    if (!retryAfter) return undefined;
+    const seconds = Number(retryAfter);
+    return Number.isFinite(seconds) ? seconds * 1000 : undefined;
+  }
+
   private async retryWithBackoff<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
     try {
       return await fn();
     } catch (error) {
       if (retries <= 0) throw error;
-      await new Promise(resolve => setTimeout(resolve, delay));
+      const retryAfterMs = this.getRetryAfterMs(error);
+      await new Promise(resolve => setTimeout(resolve, retryAfterMs ?? delay));
       return this.retryWithBackoff(fn, retries - 1, delay * 2);
     }
+  }
+
+  // Some models ignore response_format and wrap JSON in markdown code fences
+  // or add leading/trailing text; extract the JSON object defensively.
+  private extractJson(text: string): string {
+    const trimmed = text.trim();
+    // Only strip fences when the WHOLE response is wrapped in a single
+    // ```json ... ``` block (some models do this despite json_object mode).
+    // The translated body itself may legitimately contain ``` code fences,
+    // so we must not match those inner occurrences.
+    const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*)\s*```$/i);
+    if (fenceMatch) {
+      const inner = fenceMatch[1].trim();
+      try {
+        JSON.parse(inner);
+        return inner;
+      } catch {
+        // Fall through; the fence-looking text wasn't actually a clean wrapper
+      }
+    }
+    try {
+      JSON.parse(trimmed);
+      return trimmed;
+    } catch {
+      // Fall back to slicing from the first '{' to the last '}' in the text
+    }
+    const start = trimmed.indexOf('{');
+    const end = trimmed.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      return trimmed.slice(start, end + 1);
+    }
+    return trimmed;
   }
 
   private async translateSingle(task: TranslationTask): Promise<string> {
@@ -89,7 +132,7 @@ Strict Rules:
       return responseText;
     });
 
-    const translatedData = JSON.parse(response);
+    const translatedData = JSON.parse(this.extractJson(response));
     const translatedFrontMatter = translatedData.frontMatter || {};
     const translatedBody = translatedData.body || '';
 

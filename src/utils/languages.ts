@@ -36,3 +36,7 @@ export function getLanguageNativeName(code: string): string {
   const lang = SUPPORTED_LANGUAGES.find(l => l.code === code);
   return lang ? lang.nativeName : code;
 }
+
+export function getSupportedLanguageCodesList(): string {
+  return SUPPORTED_LANGUAGES.map(l => l.code).join(', ');
+}

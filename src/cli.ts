@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import { select, input, checkbox, confirm, password } from '@inquirer/prompts';
 import { Orchestrator } from './core/orchestrator';
 import { BlogGlobalConfig } from './core/config';
-import { SUPPORTED_LANGUAGES, isValidLanguageCode } from './utils/languages';
+import { SUPPORTED_LANGUAGES, isValidLanguageCode, getSupportedLanguageCodesList } from './utils/languages';
 
 function parseSimpleYaml(content: string): Record<string, any> {
   const result: Record<string, any> = {};
@@ -222,6 +222,16 @@ async function main() {
       console.error('Error: --target-langs is required in non-interactive mode.');
       process.exit(1);
     }
+    if (!isValidLanguageCode(baseLang)) {
+      console.error(`Error: Invalid --base-lang "${baseLang}". Supported language codes: ${getSupportedLanguageCodesList()}`);
+      process.exit(1);
+    }
+    for (const lang of targetLangs) {
+      if (!isValidLanguageCode(lang)) {
+        console.error(`Error: Invalid target language "${lang}". Supported language codes: ${getSupportedLanguageCodesList()}`);
+        process.exit(1);
+      }
+    }
 
     config = {
       aiProvider: aiProvider as any,
@@ -242,6 +252,7 @@ async function main() {
   console.log('\nRunning translation...');
   // Force Orchestrator not to create PR automatically inside run() so CLI can handle it interactively with retries!
   const prRequested = !!config.createPr;
+  const interactivePrFlow = !runDirectly;
   const orchestratorConfig = { ...config, createPr: false };
   const orchestrator = new Orchestrator(orchestratorConfig, workspacePath);
   const result = await orchestrator.run();
@@ -258,6 +269,10 @@ async function main() {
 
       while (true) {
         if (!githubToken) {
+          if (!interactivePrFlow) {
+            console.error('\nError: --token (or GITHUB_TOKEN env var) is required to create a Pull Request in non-interactive mode.');
+            process.exit(1);
+          }
           console.log('\nGitHub Token is required to create a Pull Request.');
           githubToken = await input({
             message: 'Enter GitHub Personal Access Token (or press Enter to cancel PR creation):'
@@ -298,7 +313,12 @@ async function main() {
           break; // Success! Exit retry loop.
         } catch (err: any) {
           console.error(`\nError during Pull Request creation: ${err.message || err}`);
-          
+
+          if (!interactivePrFlow) {
+            console.error('Non-interactive mode: aborting after Pull Request failure. Your translated and modified files have been saved locally.');
+            process.exit(1);
+          }
+
           // Ask if they want to retry or abort
           const retryChoice = await select({
             message: 'How would you like to proceed?',

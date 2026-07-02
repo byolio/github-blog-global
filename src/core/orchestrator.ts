@@ -10,6 +10,7 @@ import { Translator, TranslationTask } from './translator';
 import { FileGenerator } from './generator';
 import { LangLinkInjector, PageInfo } from './lang-link';
 import { GitPRManager } from './git-pr';
+import { readTextFile } from '../utils/fs-utils';
 
 export interface OrchestratorResult {
   translatedCount: number;
@@ -32,7 +33,7 @@ export class Orchestrator {
     const fullPath = path.join(this.workspacePath, filePath);
     if (fs.existsSync(fullPath)) {
       try {
-        const content = fs.readFileSync(fullPath, 'utf8');
+        const content = readTextFile(fullPath);
         const parsed = matter(content);
         if (typeof parsed.data.permalink === 'string') {
           return parsed.data.permalink;
@@ -75,7 +76,8 @@ export class Orchestrator {
         this.workspacePath,
         state,
         detectResult.postsDir,
-        (p) => ignoreParser.ignores(p)
+        (p) => ignoreParser.ignores(p),
+        this.config.targetLangs
       );
 
       const hasChanges = diff.added.length > 0 || diff.modified.length > 0 || diff.deleted.length > 0;
@@ -113,7 +115,7 @@ export class Orchestrator {
         const fullPath = path.join(this.workspacePath, file);
         if (!fs.existsSync(fullPath)) continue;
 
-        const content = fs.readFileSync(fullPath, 'utf8');
+        const content = readTextFile(fullPath);
         for (const targetLang of this.config.targetLangs) {
           tasks.push({
             filePath: file,
@@ -144,7 +146,7 @@ export class Orchestrator {
         for (const file of pendingFiles) {
           const fileResults = resultsByFile[file] || [];
           const originalFullPath = path.join(this.workspacePath, file);
-          const originalContent = fs.readFileSync(originalFullPath, 'utf8');
+          const originalContent = readTextFile(originalFullPath);
           const originalHash = DiffDetector.getHash(originalContent);
 
           const fileState = state.files[file] || { hash: originalHash, translated: {} };
@@ -211,7 +213,7 @@ export class Orchestrator {
         });
 
         // Inject links into original file
-        const originalContent = fs.readFileSync(originalFullPath, 'utf8');
+        const originalContent = readTextFile(originalFullPath);
         const updatedOriginalContent = LangLinkInjector.inject(originalContent, this.config.baseLang, pages);
         if (originalContent !== updatedOriginalContent) {
           fs.writeFileSync(originalFullPath, updatedOriginalContent, 'utf8');
@@ -225,7 +227,7 @@ export class Orchestrator {
           const dummyResult = FileGenerator.generate(originalFile, '', targetLang, detectResult);
           const fullGenPath = path.join(this.workspacePath, dummyResult.generatedPath);
           if (fs.existsSync(fullGenPath)) {
-            const genContent = fs.readFileSync(fullGenPath, 'utf8');
+            const genContent = readTextFile(fullGenPath);
             const updatedGenContent = LangLinkInjector.inject(genContent, targetLang, pages);
             if (genContent !== updatedGenContent) {
               fs.writeFileSync(fullGenPath, updatedGenContent, 'utf8');
