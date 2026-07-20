@@ -1,6 +1,6 @@
 # blog-global
 
-**中文** | [繁體中文](readme/zh-TW.md) | [English](readme/en.md) | [日本語](readme/ja.md) | [한국어](readme/ko.md) | [Español](readme/es.md) | [Français](readme/fr.md) | [Deutsch](readme/de.md) | [Русский](readme/ru.md) | [Português](readme/pt.md) | [العربية](readme/ar.md) | [हिन्दी](readme/hi.md) | [Italiano](readme/it.md) | [Nederlands](readme/nl.md) | [Polski](readme/pl.md) | [Türkçe](readme/tr.md) | [Tiếng Việt](readme/vi.md) | [ไทย](readme/th.md) | [Bahasa Indonesia](readme/id.md) | [Bahasa Melayu](readme/ms.md)
+**中文** | [繁體中文](zh-TW.md) | [English](en.md) | [日本語](ja.md) | [한국어](ko.md) | [Español](es.md) | [Français](fr.md) | [Deutsch](de.md) | [Русский](ru.md) | [Português](pt.md) | [العربية](ar.md) | [हिन्दी](hi.md) | [Italiano](it.md) | [Nederlands](nl.md) | [Polski](pl.md) | [Türkçe](tr.md) | [Tiếng Việt](vi.md) | [ไทย](th.md) | [Bahasa Indonesia](id.md) | [Bahasa Melayu](ms.md)
 
 用 AI 把 GitHub Pages 博客翻译成多语言。
 
