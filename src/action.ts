@@ -14,6 +14,9 @@ async function run() {
     const targetLangsInput = core.getInput('target_langs', { required: true });
     const githubToken = core.getInput('github_token') || undefined;
     const siteUrl = core.getInput('site_url') || undefined;
+    // On push events GITHUB_REF_NAME is the pushed branch; repos like
+    // xxx.github.io often use "master", so don't blindly default to "main".
+    const baseBranch = core.getInput('base_branch') || process.env.GITHUB_REF_NAME || 'main';
 
     const targetLangs = targetLangsInput
       .split(',')
@@ -40,6 +43,7 @@ async function run() {
       targetLangs,
       githubToken,
       createPr: !!githubToken,
+      baseBranch,
       siteUrl
     };
 

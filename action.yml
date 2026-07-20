@@ -22,6 +22,9 @@ inputs:
   site_url:
     description: 'Public site URL used to build absolute language switch links (e.g. https://www.byolio.blog). Leave empty to use site-relative links.'
     required: false
+  base_branch:
+    description: 'Base branch for the PR (defaults to the branch that triggered the workflow)'
+    required: false
   github_token:
     description: 'GitHub Token for PR creation (GITHUB_TOKEN or GitHub App token)'
     required: false

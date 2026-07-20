@@ -83,15 +83,18 @@ class Translator {
         const fieldsToTranslate = {};
         if (originalData.title)
             fieldsToTranslate.title = originalData.title;
+        if (originalData.subtitle)
+            fieldsToTranslate.subtitle = originalData.subtitle;
         if (originalData.description)
             fieldsToTranslate.description = originalData.description;
         if (originalData.summary)
             fieldsToTranslate.summary = originalData.summary;
-        if (originalData.tags)
-            fieldsToTranslate.tags = originalData.tags;
+        // Tags are intentionally NOT translated: they are shared taxonomy keys
+        // across the whole site, and translating them would create duplicate
+        // foreign-language tags in site.tags.
         const systemPrompt = `You are a professional blog post translator. Translate the given content from ${sourceLang} to ${targetLang}.
 You will be provided with a JSON object containing 'frontMatter' and 'body'.
-Translate 'frontMatter' (only the values of 'title', 'description', 'summary', and elements of 'tags' array if they exist) and the 'body' string.
+Translate 'frontMatter' (only the values of 'title', 'subtitle', 'description', and 'summary' if they exist) and the 'body' string.
 
 Strict Rules:
 1. Maintain all Markdown formatting in the translated body (headings, lists, bold, italics, links, images, tables).
@@ -112,9 +115,16 @@ Strict Rules:
                     { role: 'user', content: userMessage }
                 ],
                 temperature: 0.1,
+                // SiliconFlow defaults max_tokens to a small value (512), which would
+                // truncate any real article. Request a generous output budget.
+                max_tokens: this.config.aiProvider === 'siliconflow' ? 8192 : undefined,
                 response_format: { type: 'json_object' }
             });
-            const responseText = completion.choices[0]?.message?.content;
+            const choice = completion.choices[0];
+            if (choice?.finish_reason === 'length') {
+                throw new Error('AI response was truncated (finish_reason=length). The article may be too long for the model output limit.');
+            }
+            const responseText = choice?.message?.content;
             if (!responseText) {
                 throw new Error('Empty response from AI model');
             }
@@ -127,12 +137,12 @@ Strict Rules:
         const mergedData = { ...originalData };
         if (translatedFrontMatter.title)
             mergedData.title = translatedFrontMatter.title;
+        if (translatedFrontMatter.subtitle)
+            mergedData.subtitle = translatedFrontMatter.subtitle;
         if (translatedFrontMatter.description)
             mergedData.description = translatedFrontMatter.description;
         if (translatedFrontMatter.summary)
             mergedData.summary = translatedFrontMatter.summary;
-        if (translatedFrontMatter.tags)
-            mergedData.tags = translatedFrontMatter.tags;
         // Stringify back with gray-matter
         return gray_matter_1.default.stringify(translatedBody, mergedData);
     }

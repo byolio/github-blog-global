@@ -61,6 +61,7 @@ class Orchestrator {
         let relativePath;
         const fullPath = path.join(this.workspacePath, filePath);
         let permalink;
+        let frontMatterDate;
         if (fs.existsSync(fullPath)) {
             try {
                 const content = (0, fs_utils_1.readTextFile)(fullPath);
@@ -68,6 +69,7 @@ class Orchestrator {
                 if (typeof parsed.data.permalink === 'string') {
                     permalink = parsed.data.permalink;
                 }
+                frontMatterDate = parsed.data.date;
             }
             catch {
                 // Ignore
@@ -76,7 +78,16 @@ class Orchestrator {
         if (permalink) {
             relativePath = permalink;
         }
-        else {
+        else if (framework !== 'hexo') {
+            // Jekyll with the global `permalink: pretty` setting publishes posts at
+            // /yyyy/mm/dd/slug/, NOT at /{filename}/. Mirror that so language
+            // switch links actually resolve.
+            const prettyUrl = (0, generator_1.jekyllPrettyUrl)(filePath, frontMatterDate);
+            if (prettyUrl) {
+                relativePath = lang === this.config.baseLang ? prettyUrl : `/${lang}${prettyUrl}`;
+            }
+        }
+        if (!relativePath) {
             // Fallback URL generation
             let cleanPath = filePath.replace(/\\/g, '/');
             // Strip posts directory prefixes
@@ -106,6 +117,18 @@ class Orchestrator {
             const stateManager = new state_1.StateManager(this.workspacePath);
             const state = stateManager.readState();
             const ignoreParser = new ignore_1.IgnoreParser(this.workspacePath);
+            // 2.5 Migration from the legacy {lang}/_posts layout: if state claims a
+            // translation exists but the file is not at the new page-based path,
+            // drop it from state (so it gets retranslated) and delete the legacy
+            // file that polluted site.posts.
+            for (const [originalFile, fileState] of Object.entries(state.files)) {
+                for (const lang of Object.keys(fileState.translated)) {
+                    const newPath = generator_1.FileGenerator.generate(originalFile, '', lang, detectResult).generatedPath;
+                    if (!fs.existsSync(path.join(this.workspacePath, newPath))) {
+                        delete fileState.translated[lang];
+                    }
+                }
+            }
             // 3. Get Diff
             const diff = diff_1.DiffDetector.getDiff(this.workspacePath, state, detectResult.postsDir, (p) => ignoreParser.ignores(p), this.config.targetLangs);
             const hasChanges = diff.added.length > 0 || diff.modified.length > 0 || diff.deleted.length > 0;
@@ -115,6 +138,21 @@ class Orchestrator {
             }
             console.log(`Found changes: ${diff.added.length} added, ${diff.modified.length} modified, ${diff.deleted.length} deleted.`);
             const filesToCommit = new Set();
+            // Removes a leftover translation from the legacy {lang}/_posts location.
+            // Files there are treated as posts by Jekyll and leak into the homepage
+            // and site.tags, so they must not survive alongside the new page-based
+            // translations.
+            const cleanupLegacyTranslation = (originalFile, lang) => {
+                const legacyPath = generator_1.FileGenerator.legacyGeneratedPath(originalFile, lang, detectResult);
+                if (!legacyPath)
+                    return;
+                const fullLegacyPath = path.join(this.workspacePath, legacyPath);
+                if (fs.existsSync(fullLegacyPath)) {
+                    fs.unlinkSync(fullLegacyPath);
+                    filesToCommit.add(legacyPath);
+                    console.log(`Removed legacy translation file: ${legacyPath}`);
+                }
+            };
             // 4. Handle Deleted Files
             for (const deletedFile of diff.deleted) {
                 const fileState = state.files[deletedFile];
@@ -127,6 +165,7 @@ class Orchestrator {
                             fs.unlinkSync(fullGeneratedPath);
                             filesToCommit.add(dummyResult.generatedPath);
                         }
+                        cleanupLegacyTranslation(deletedFile, lang);
                     }
                     delete state.files[deletedFile];
                 }
@@ -181,6 +220,7 @@ class Orchestrator {
                             }
                             fs.writeFileSync(fullGenPath, genResult.content, 'utf8');
                             filesToCommit.add(genResult.generatedPath);
+                            cleanupLegacyTranslation(file, res.targetLang);
                             // Update state
                             fileState.translated[res.targetLang] = diff_1.DiffDetector.getHash(genResult.content);
                             translatedCount++;
