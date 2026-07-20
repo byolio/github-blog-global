@@ -26,8 +26,8 @@ release/
 *.tar.gz
 *.tgz
 
-# ncc intermediate / build cache
-dist/cli-bundle/
+# build output (compiled; not source)
+dist/
 .cache/
 .npm/
 .eslintcache
